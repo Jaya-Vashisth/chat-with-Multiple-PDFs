@@ -6,9 +6,17 @@ from langchain.embeddings import OpenAIEmbeddings,HuggingFaceEmbeddings# type: i
 from langchain.memory import ConversationBufferMemory # type: ignore
 # langchain_community.embeddings # type: ignore
 from langchain.vectorstores import FAISS # type: ignore
-from langhain.chains import ConversationalRetrievalChain # type: ignore
-# from langchain.llms import OpenAI # type: ignore
-from langchain.chatModels import ChatOpenAI # type: ignore
+from langchain.chains import ConversationalRetrievalChain # type: ignore
+
+from langchain.chat_models import ChatOpenAI # type: ignore
+from htmlTemplate import css,bot_template,user_template
+
+import os
+
+
+
+
+   
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
@@ -48,23 +56,45 @@ def get_vector_store(text_chunks):
 
 
 def get_conversation_chain(vector_store):
-    llm = ChatOpenAI()
+    
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+
+
+    llm = ChatOpenAI(
+        model="mistralai/mistral-7b-instruct",
+        openai_api_base="https://openrouter.ai/api/v1",
+        openai_api_key=openrouter_key,
+    )
+
     memory = ConversationBufferMemory(
         memory_key="chat_history",
         return_messages=True,
     )
 
-    converation_chain =  ConversationalRetrievalChain.from_llm(
+    conversation_chain =  ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=vector_store.as_retriever(),
         memory=memory,
     )
 
-    return converation_chain
+    return conversation_chain
+
+
+def handle_user_input(user_question):
+    response = st.session_state.conversation({"question": user_question})
+    st.write(response)
+
+
+
 
 def main():
 
+    if "conversation" not in st.session_state:
+        st.session_state.converstation = None
+
     load_dotenv()
+    st.set_page_config(page_title = "chat with multiple PDFs", page_icon = ":books:")  # Set wide layout for the app
+    st.write(css, unsafe_allow_html=True) 
 
     st.set_page_config(
         page_title="Chat with multiple PDFs",
@@ -72,7 +102,14 @@ def main():
     )
     
     st.header("chat with multiple PDFs :books:")
-    st.text_input("Ask a question about your PDFs", key="question")
+    user_question = st.text_input("Ask a question about your PDFs", key="question")
+
+    if(user_question):
+        handle_user_input(user_question)
+
+
+    st.write(user_template.replace("{{MSG}}","hello bot"), unsafe_allow_html=True)
+    st.write(bot_template.replace("{{MSG}}", "Hello"), unsafe_allow_html=True)
 
     with st.sidebar:
       st.subheader("Your documents")
@@ -93,20 +130,8 @@ def main():
                   #st.write("Vector store created successfully!")
 
                   ## create conversation chain
-                  converstation = get_conversation_chain(vector_store)
-
-
-  
-        
-
-
-
-           
-
-
-
-
-        
+                  st.session_state.conversation = get_conversation_chain(vector_store)
+      
 
 if __name__ == "__main__":
     main()
