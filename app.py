@@ -2,21 +2,17 @@ import streamlit as st  # type: ignore
 from dotenv import load_dotenv # type: ignore
 from PyPDF2 import PdfReader  # type: ignore
 from langchain.text_splitter import CharacterTextSplitter  # type: ignore
-from langchain.embeddings import OpenAIEmbeddings,HuggingFaceEmbeddings# type: ignore
 from langchain.memory import ConversationBufferMemory # type: ignore
-# langchain_community.embeddings # type: ignore
 from langchain.vectorstores import FAISS # type: ignore
 from langchain.chains import ConversationalRetrievalChain # type: ignore
-
 from langchain.chat_models import ChatOpenAI # type: ignore
 from htmlTemplate import css,bot_template,user_template
-
+from langchain.embeddings import OpenAIEmbeddings # type: ignore           
 import os
 
 
 
-
-   
+#Function to extract text from PDF files
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
@@ -26,6 +22,7 @@ def get_pdf_text(pdf_docs):
     
     return text
 
+#Function to split the text into chunks
 def get_text_chunks(raw_text):
     text_splitter = CharacterTextSplitter(
         separator="\n",
@@ -41,30 +38,23 @@ def get_text_chunks(raw_text):
 
 #generate embeddings and create a vector store
 def get_vector_store(text_chunks):
-    # 1. Add instruction prefix to each chunk
-    chunks_with_prefix = [
-        f"Represent this passage for retrieval: {chunk}"
-        for chunk in text_chunks
-    ]
+    
+    # 1. Load embedding model
+    embeddings = OpenAIEmbeddings(model = "text-embedding-ada-002")
 
-    # 2. Load embedding model
-    embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en")
 
-    # 3. Create vector store using prefixed chunks
-    vectorstore = FAISS.from_texts(texts=chunks_with_prefix, embedding=embeddings)
+    # 2. Create vector store using prefixed chunks
+    vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
     return vectorstore
 
 
+#Function to create a conversation chain using the vector store
 def get_conversation_chain(vector_store):
     
-    openrouter_key = os.getenv("OPENROUTER_API_KEY")
 
 
-    llm = ChatOpenAI(
-        model="mistralai/mistral-7b-instruct",
-        openai_api_base="https://openrouter.ai/api/v1",
-        openai_api_key=openrouter_key,
-    )
+    llm = ChatOpenAI(modelname="gpt-3.5-turbo", temperature=0.0, max_tokens=1000)  # type: ignore
+
 
     memory = ConversationBufferMemory(
         memory_key="chat_history",
@@ -80,17 +70,23 @@ def get_conversation_chain(vector_store):
     return conversation_chain
 
 
+
+#Function to handle user input and display the response
 def handle_user_input(user_question):
     response = st.session_state.conversation({"question": user_question})
-    st.write(response)
+    st.session_state.chat_history = response["chat_history"]
+
+    for i, message in enumerate(st.session_state.chat_history):
+        if i % 2 == 0:
+            st.write(user_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
+        else:   
+            st.write(bot_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
 
 
-
-
+# Main function to run the Streamlit app
 def main():
 
-    if "conversation" not in st.session_state:
-        st.session_state.converstation = None
+  
 
     load_dotenv()
     st.set_page_config(page_title = "chat with multiple PDFs", page_icon = ":books:")  # Set wide layout for the app
@@ -100,16 +96,18 @@ def main():
         page_title="Chat with multiple PDFs",
         page_icon=":books:",
     )
+
+    if "conversation" not in st.session_state:
+        st.session_state.conversation = None
+    
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = None
     
     st.header("chat with multiple PDFs :books:")
     user_question = st.text_input("Ask a question about your PDFs", key="question")
 
     if(user_question):
         handle_user_input(user_question)
-
-
-    st.write(user_template.replace("{{MSG}}","hello bot"), unsafe_allow_html=True)
-    st.write(bot_template.replace("{{MSG}}", "Hello"), unsafe_allow_html=True)
 
     with st.sidebar:
       st.subheader("Your documents")
