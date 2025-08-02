@@ -10,7 +10,8 @@ from htmlTemplate import css,bot_template,user_template
 from langchain.embeddings import OpenAIEmbeddings # type: ignore           
 import os
 
-
+api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+os.environ["OPENAI_API_KEY"] = api_key
 
 #Function to extract text from PDF files
 def get_pdf_text(pdf_docs):
@@ -53,7 +54,7 @@ def get_conversation_chain(vector_store):
     
 
 
-    llm = ChatOpenAI(modelname="gpt-3.5-turbo", temperature=0.0, max_tokens=1000)  # type: ignore
+    llm = ChatOpenAI()  # type: ignore
 
 
     memory = ConversationBufferMemory(
