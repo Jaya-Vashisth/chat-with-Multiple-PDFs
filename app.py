@@ -1,5 +1,5 @@
 import streamlit as st  # type: ignore
-from dotenv import load_dotenv # type: ignore
+# from dotenv import load_dotenv # type: ignore
 from PyPDF2 import PdfReader  # type: ignore
 from langchain.text_splitter import CharacterTextSplitter  # type: ignore
 from langchain.memory import ConversationBufferMemory # type: ignore
@@ -8,9 +8,11 @@ from langchain.chains import ConversationalRetrievalChain # type: ignore
 from langchain.chat_models import ChatOpenAI # type: ignore
 from htmlTemplate import css,bot_template,user_template
 from langchain.embeddings import OpenAIEmbeddings # type: ignore           
-# import os
+import os
 
 api_key = st.secrets.get("OPENAI_API_KEY") 
+os.environ["OPENAI_API_KEY"] = api_key
+
 #Function to extract text from PDF files
 def get_pdf_text(pdf_docs):
     text = ""
