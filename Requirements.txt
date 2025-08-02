@@ -1,8 +1,8 @@
-langchain
-PyPDF2
-python-dotenv
 streamlit
+python-dotenv
+PyPDF2>=2.0.0
 openai
+langchain
 faiss-cpu
 altair
 tiktoken
